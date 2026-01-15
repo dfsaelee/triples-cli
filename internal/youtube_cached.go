@@ -21,7 +21,7 @@ type cachedVideo struct {
 }
 
 // Constructor
-func NewCachedYoutubeClient(next YouTubeClient) *cachedYouTubeClient {
+func NewCachedYoutubeClient(next YouTubeClient) YouTubeClient {
 	return &cachedYouTubeClient{
 		next:          next,
 		playlistCache: make(map[string]string),
