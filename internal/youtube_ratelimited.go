@@ -2,12 +2,15 @@ package internal
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
 type rateLimitedYouTubeClient struct {
 	next    YouTubeClient
 	minWait time.Duration
+	
+	mu		sync.Mutex
 	last    time.Time
 }
 
@@ -21,6 +24,9 @@ func NewRateLimitedYouTubeClient(next YouTubeClient, minWait time.Duration) YouT
 
 // rate limit helper
 func (r *rateLimitedYouTubeClient) wait() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	now := time.Now()
 	elapsed := now.Sub(r.last)
 
