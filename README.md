@@ -16,6 +16,11 @@ Verify Installation
 which triples
 ```
 
+If `triples` is not found, may have to change add GO's bin dir to path by editing `~/.zshrc` or ``/.bashrc`
+```
+export PATH="$HOME/go/bin:$PATH"
+```
+
 Set a YouTube data API v3 key as an environment variable:
 ```
 # Bash / Zsh
