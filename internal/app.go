@@ -1,6 +1,9 @@
 package internal
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 // Runs Business logic For http and domain types
 
@@ -12,11 +15,22 @@ func NewApp(yt YouTubeClient) *App {
 	return &App{yt: yt}
 }
 
-func (a *App) LatestVideo(ctx context.Context, channel string) (Video, error) {
+func (a *App) LatestVideo(ctx context.Context, channel string, videoIndex int) (Video, error) {
 	playlistId, err := a.yt.GetUploadsPlaylistId(ctx, channel)
 	if err != nil {
 		return Video{}, err
 	}
-	
-	return a.yt.GetPlaylistItems(ctx, playlistId)
+
+	maxResults := ((videoIndex / 10) + 1) * 10
+
+	videos, err := a.yt.GetPlaylistItems(ctx, playlistId, maxResults)
+	if err != nil {
+		return Video{}, err
+	}
+
+	if videoIndex >= len(videos) {
+		return Video{}, fmt.Errorf("video index %d out of range (have %d)", videoIndex, len(videos))
+	}
+
+	return videos[videoIndex], nil
 }

@@ -9,12 +9,12 @@ import (
 type rateLimitedYouTubeClient struct {
 	next    YouTubeClient
 	minWait time.Duration
-	
-	mu		sync.Mutex
-	last    time.Time
+
+	mu   sync.Mutex
+	last time.Time
 }
 
-// constructor 
+// constructor
 func NewRateLimitedYouTubeClient(next YouTubeClient, minWait time.Duration) YouTubeClient {
 	return &rateLimitedYouTubeClient{
 		next:    next,
@@ -37,13 +37,13 @@ func (r *rateLimitedYouTubeClient) wait() {
 	r.last = time.Now()
 }
 
-// wrapp calls of YoutubeClient
-func (r * rateLimitedYouTubeClient) GetUploadsPlaylistId(ctx context.Context, channel string) (string, error) {
+// wrap calls of YoutubeClient
+func (r *rateLimitedYouTubeClient) GetUploadsPlaylistId(ctx context.Context, channel string) (string, error) {
 	r.wait()
 	return r.next.GetUploadsPlaylistId(ctx, channel)
 }
 
-func (r * rateLimitedYouTubeClient) GetPlaylistItems(ctx context.Context, playListId string) (Video, error) {
+func (r *rateLimitedYouTubeClient) GetPlaylistItems(ctx context.Context, playListId string, maxResults int) ([]Video, error) {
 	r.wait()
-	return r.next.GetPlaylistItems(ctx, playListId)
+	return r.next.GetPlaylistItems(ctx, playListId, maxResults)
 }

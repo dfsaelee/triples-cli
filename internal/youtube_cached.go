@@ -16,19 +16,19 @@ type cachedYouTubeClient struct {
 	mu sync.Mutex
 
 	playlistCache map[string]string
-	videoCache    map[string]cachedVideo
+	videoCache    map[string]cachedVideos
 
 	cacheFile string
 }
 
-type cachedVideo struct {
-	Video     Video     `json:"video"`
+type cachedVideos struct {
+	Video     []Video   `json:"video"`
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
 type persistentCache struct {
-	PlaylistCache map[string]string      `json:"playlist_cache"` // caches playlistId
-	VideoCache    map[string]cachedVideo `json:"video_cache"`
+	PlaylistCache map[string]string       `json:"playlist_cache"` // caches playlistId
+	VideoCache    map[string]cachedVideos `json:"video_cache"`
 }
 
 // Constructor
@@ -36,7 +36,7 @@ func NewCachedYoutubeClient(next YouTubeClient, cacheFile string) YouTubeClient 
 	c := &cachedYouTubeClient{
 		next:          next,
 		playlistCache: make(map[string]string),
-		videoCache:    make(map[string]cachedVideo),
+		videoCache:    make(map[string]cachedVideos),
 		cacheFile:     cacheFile,
 	}
 	c.loadCache()
@@ -49,7 +49,6 @@ func (c *cachedYouTubeClient) loadCache() {
 	if err != nil {
 		return
 	}
-
 	var pc persistentCache
 	if err := json.Unmarshal(data, &pc); err != nil {
 		fmt.Println("cache parsing failed:", err)
@@ -106,12 +105,14 @@ func (c *cachedYouTubeClient) GetUploadsPlaylistId(ctx context.Context, channel 
 }
 
 // get playlistItems from cache or cache from api call
-func (c *cachedYouTubeClient) GetPlaylistItems(ctx context.Context, playlistId string) (Video, error) {
+func (c *cachedYouTubeClient) GetPlaylistItems(ctx context.Context, playlistId string, maxResults int) ([]Video, error) {
 	now := time.Now()
 
 	// access cache while locked
 	c.mu.Lock()
-	if entry, ok := c.videoCache[playlistId]; ok && now.Before(entry.ExpiresAt) {
+	if entry, ok := c.videoCache[playlistId]; ok &&
+		now.Before(entry.ExpiresAt) &&
+		maxResults <= len(entry.Video) {
 		c.mu.Unlock()
 		return entry.Video, nil
 	}
@@ -121,19 +122,19 @@ func (c *cachedYouTubeClient) GetPlaylistItems(ctx context.Context, playlistId s
 
 	// add to cache
 
-	video, err := c.next.GetPlaylistItems(ctx, playlistId)
+	videos, err := c.next.GetPlaylistItems(ctx, playlistId, maxResults)
 	if err != nil {
-		return Video{}, err
+		return nil, err
 	}
 
 	// lock mutex and add to cache
 	c.mu.Lock()
-	c.videoCache[playlistId] = cachedVideo{
-		Video:     video,
+	c.videoCache[playlistId] = cachedVideos{
+		Video:     videos,
 		ExpiresAt: now.Add(30 * time.Second),
 	}
 	c.mu.Unlock()
 
 	c.saveCache()
-	return video, nil
+	return videos, nil
 }

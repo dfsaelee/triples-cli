@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 type YouTubeHTTPClient struct {
@@ -40,7 +41,6 @@ type playlistItemsResponse struct {
 
 // Get the playlist id
 // modifying the YoutubeHTTPClient Function
-// we probably just add a handle to the client?
 func (c *YouTubeHTTPClient) GetUploadsPlaylistId(ctx context.Context, handle string) (string, error) {
 	url := fmt.Sprintf(
 		"https://youtube.googleapis.com/youtube/v3/channels?part=contentDetails&forHandle=%s&key=%s&maxResults=5",
@@ -55,7 +55,7 @@ func (c *YouTubeHTTPClient) GetUploadsPlaylistId(ctx context.Context, handle str
 	}
 	defer channelRes.Body.Close()
 	if channelRes.StatusCode != 200 {
-		fmt.Println("Youtube Channels API not Available")
+		return "", fmt.Errorf("YouTube Channels API returned status %d", channelRes.StatusCode)
 	}
 
 	// get response body
@@ -72,14 +72,19 @@ func (c *YouTubeHTTPClient) GetUploadsPlaylistId(ctx context.Context, handle str
 	return channel.Items[0].ContentDetails.RelatedPlaylists.Uploads, nil
 }
 
-func (c *YouTubeHTTPClient) GetPlaylistItems(ctx context.Context, playlistId string) (Video, error) {
-	url := fmt.Sprintf("https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&key=%s&playlistId=%s&maxResults=1",
+func (c *YouTubeHTTPClient) GetPlaylistItems(ctx context.Context, playlistId string, maxResults int) ([]Video, error) {
+	url := fmt.Sprintf(
+		"https://youtube.googleapis.com/youtube/v3/playlistItems?part=snippet&key=%s&playlistId=%s&maxResults=%s",
 		c.apiKey,
 		playlistId,
+		strconv.Itoa(maxResults),
 	)
 	playlistRes, err := http.Get(url)
+
+	videos := make([]Video, 0, maxResults)
+
 	if err != nil {
-		return Video{"", ""}, err
+		return nil, err
 	}
 
 	defer playlistRes.Body.Close()
@@ -90,15 +95,24 @@ func (c *YouTubeHTTPClient) GetPlaylistItems(ctx context.Context, playlistId str
 	// get body
 	playlistItemsBody, err := io.ReadAll(playlistRes.Body)
 	if err != nil {
-		return Video{"", ""}, err
+		return nil, err
 	}
 
 	// ummarshal
 	var playlistItems playlistItemsResponse
+	if err := json.Unmarshal(playlistItemsBody, &playlistItems); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
 
-	json.Unmarshal(playlistItemsBody, &playlistItems)
-	title := playlistItems.Items[0].Snippet.Title
-	videoId := playlistItems.Items[0].Snippet.ResourceId.VideoId
-	title = cleanTitle(title)
-	return Video{title, videoId}, nil
+	if len(playlistItems.Items) < maxResults {
+		maxResults = len(playlistItems.Items) // avoid out-of-bounds
+	}
+
+	for videoIndex := 0; videoIndex < maxResults; videoIndex++ {
+		title := playlistItems.Items[videoIndex].Snippet.Title
+		videoId := playlistItems.Items[videoIndex].Snippet.ResourceId.VideoId
+		title = cleanTitle(title)
+		videos = append(videos, Video{title, videoId})
+	}
+	return videos, nil
 }

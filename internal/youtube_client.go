@@ -13,5 +13,5 @@ type Video struct {
 // YoutubeHTTPClient satisfies interface with these methods
 type YouTubeClient interface {
 	GetUploadsPlaylistId(ctx context.Context, channel string) (string, error)
-	GetPlaylistItems(ctx context.Context, playlistID string) (Video, error)
+	GetPlaylistItems(ctx context.Context, playlistID string, videoIndex int) ([]Video, error)
 }
