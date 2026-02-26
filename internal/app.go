@@ -32,5 +32,9 @@ func (a *App) LatestVideo(ctx context.Context, channel string, videoIndex int) (
 		return Video{}, fmt.Errorf("video index %d out of range (have %d)", videoIndex, len(videos))
 	}
 
+	if videoIndex >= 50 {
+		return Video{}, fmt.Errorf("video index %d out of max range of api (have %d)", videoIndex, len(videos))
+	}
+
 	return videos[videoIndex], nil
 }
