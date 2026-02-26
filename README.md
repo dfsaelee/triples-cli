@@ -27,11 +27,14 @@ Set a YouTube data API v3 key as an environment variable:
 export YOUTUBE_API_KEY=<YOUR_API_KEY>
 ```
 
+## Usage
+With the absence of the `-s` flag, the terminal goes into interactive mode. Use `j` to scroll through more older videos up to 50 for the specified channel. Use `k` to scroll throuhg previous videos scrolled up to the newest. Use `q` to exit. 
+
 Flags
 ## Command-Line Flags
 
 | Flag | Description | Default |
-|------|------------|---------|
+|--------|------------|---------|
 | `-ch <channel-name>` | Specify the YouTube channel handle. | `triplescosmos` |
-| `-health` | Run a quick health check to verify API key, network connectivity, and cache status. | N/A |
-
+| `-health` | Run a quick health check to verify API key, network connectivity, and cache status. | false |
+| `-s` | Run command in short mode to display one video | false |

@@ -64,6 +64,11 @@ func runHealthCheck() {
 	fmt.Println("Health Check Passed")
 }
 
+func clearLine() {
+	fmt.Print("\r\033[2K")
+}
+
+// read a key in interactive mode
 func readKey() (key rune, err error) {
 	fd := os.Stdin.Fd()
 	var buf [1]byte
@@ -79,6 +84,7 @@ func readKey() (key rune, err error) {
 	return rune(buf[0]), nil
 }
 
+// create a new app, instantiating our client to make api calls
 func newApp() (*internal.App, error) {
 	// load env make, sure to upload api key
 	apiKey := os.Getenv("YOUTUBE_API_KEY")
@@ -97,13 +103,14 @@ func newApp() (*internal.App, error) {
 	return internal.NewApp(cached), nil
 }
 
+// run in short mode displaying one video and exiting
 func runShort(ctx context.Context, app *internal.App, channel string) error {
 	videoIndex := 0
 	video, err := app.LatestVideo(ctx, channel, videoIndex)
 	if err != nil {
 		return err
 	}
-
+	clearLine()
 	fmt.Printf(
 		"\r\"%s\" : https://www.youtube.com/watch?v=%s\n",
 		video.Title, video.VideoId,
@@ -120,9 +127,9 @@ func runInteractive(ctx context.Context, app *internal.App, channel string) erro
 		if err != nil {
 			return err
 		}
-
+		clearLine()
 		fmt.Printf(
-			"\r[%d] \"%s\" : https://www.youtube.com/watch?v=%s\n",
+			"\r[%d] \"%s\" : https://www.youtube.com/watch?v=%s",
 			videoIndex, video.Title, video.VideoId,
 		)
 
@@ -138,7 +145,9 @@ func runInteractive(ctx context.Context, app *internal.App, channel string) erro
 			if videoIndex > 0 {
 				videoIndex--
 			} else {
-				fmt.Println("Top of List Reached")
+				clearLine()
+				fmt.Print("Top of List Reached")
+				time.Sleep(500*time.Millisecond) // time out for a second
 			}
 		case 'q':
 			return nil
@@ -146,26 +155,27 @@ func runInteractive(ctx context.Context, app *internal.App, channel string) erro
 	}
 }
 
+// main
 func main() {
 	flag.Parse()
 	if *health {
 		runHealthCheck()
 		return
 	}
-	// create app
+
 	app, err := newApp()
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	ctx := context.Background()
 
+	// early return if short
 	if *short {
 		runShort(ctx, app, *ch)
 		return
 	}
+
 	// blocks main
-	// takes in flags
 	if err := runInteractive(ctx, app, *ch); err != nil {
 		log.Fatal(err)
 	}
